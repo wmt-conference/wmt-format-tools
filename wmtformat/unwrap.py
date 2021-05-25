@@ -13,16 +13,6 @@ import lxml.etree as ET
 
 LOG = logging.getLogger(__name__)
 
-class Document:
-  def __init__(self, doc_el):
-    pass
-
-  # Doc contains:
-    # src lang
-    # src sentences
-    # ref langs
-    # ref sentences for each (lang,trans) pair, or placeholders
- 
 
 def main():
   logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
