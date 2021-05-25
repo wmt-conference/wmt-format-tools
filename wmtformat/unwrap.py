@@ -25,6 +25,8 @@ def main():
 
   tree = ET.parse(args.in_file) 
 
+  #TODO: Handle multiple translators
+
   # Find and check  the source langs, ref langs and translators
   src_langs, ref_langs, translators = set(), set(), set()
   for src_doc in tree.getroot().findall(".//src"):
@@ -68,7 +70,7 @@ def main():
       src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
       if rfh:
         ref_sents = {int(seg.get("id")): seg.text for seg in doc.findall(f".//ref//seg")}
-        #ref_sents = {int(seg.get("id")): seg.text for seg in doc.findall(f".//ref[@translator='{translator}']//seg")}
+        #ref_sents = {int(seg.get("id")): seg.text for seg in doc.findall(f".//ref[@translator='{args.translator}']//seg")}
       for seg_id in sorted(src_sents.keys()):
         print(src_sents[seg_id], file=sfh)
         src_sent_count += 1
