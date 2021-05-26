@@ -25,7 +25,6 @@ def main():
 
   tree = ET.parse(args.in_file) 
 
-  #TODO: Handle multiple translators
 
   # Find and check  the source langs, ref langs and translators
   src_langs, ref_langs, translators = set(), set(), set()
@@ -34,8 +33,8 @@ def main():
 
   for ref_doc in tree.getroot().findall(".//ref"):
     ref_langs.add(ref_doc.get("lang"))
-    #translator = ref_doc.get("translator")
-    #translators.add(translator)
+    translator = ref_doc.get("translator")
+    if translator: translators.add(translator)
   
   if len(src_langs) >  1:
     raise RuntimeError("Multiple source languages found")
@@ -45,6 +44,12 @@ def main():
 
   if len(ref_langs) > 1:
     raise RuntimeError("Multiple reference languages found -- this case is not currently handled")
+
+  if len(translators) > 1 and args.translator == None:
+    raise RuntimeError("Multiple translators -- need to specify which one to choose")
+
+  if args.translator != None and args.translator not in translators:
+    raise RuntimeError(f"No references found for specified translator ({args.translator})") 
 
 
   # There is exactly one of these
@@ -68,9 +73,17 @@ def main():
     for doc in tree.getroot().findall(".//doc"):
       doc_count += 1
       src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
-      if rfh:
-        ref_sents = {int(seg.get("id")): seg.text for seg in doc.findall(f".//ref//seg")}
-        #ref_sents = {int(seg.get("id")): seg.text for seg in doc.findall(f".//ref[@translator='{args.translator}']//seg")}
+      if rfh: 
+        ref_docs = doc.findall(".//ref")
+        ref_doc = None
+        trans_to_ref  = {ref.get("translator"): ref for ref in ref_docs}
+        if args.translator and len(trans_to_ref) > 1:
+          # More than one translation exists, and one has been selected on command line
+          ref_doc = trans_to_ref.get(args.translator, None)
+        else:
+          # Else just take the first ref
+          ref_doc = ref_docs[0] if len(ref_docs) else None
+        ref_sents = {int(seg.get("id")): seg.text for seg in ref_doc.findall(f".//seg")} if ref_doc is not None else {}
       for seg_id in sorted(src_sents.keys()):
         print(src_sents[seg_id], file=sfh)
         src_sent_count += 1
