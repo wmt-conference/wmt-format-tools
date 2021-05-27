@@ -2,7 +2,10 @@
 
 Tools for handling the xml-formatted test sets and hypothesis files used in the [WMT news task](http://www.statmt.org/wmt21/translation-task.html)
 
+
 ## Installation
+
+Requires python >= 3.6
 
 ```pip install git+https://github.com/wmt-conference/wmt-format-tools.git```
 
