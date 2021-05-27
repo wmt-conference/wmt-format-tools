@@ -1,6 +1,6 @@
 # WMT Format Tools
 
-Tools for handling the xml-formatted test sets and hypothesis files used in WMT.
+Tools for handling the xml-formatted test sets and hypothesis files used in the [WMT news task](http://www.statmt.org/wmt21/translation-task.html)
 
 ## Installation
 
