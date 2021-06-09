@@ -111,11 +111,21 @@ def main():
   src_lang, src, ref_lang, ref = unwrap(args.in_file, args.missing_translation_message)
  
   # Check translator
-  if args.translator != None and args.translator not in ref:
-    raise RuntimeError(f"Translator {args.translator} was not found")
+  if ref_lang:
+    if args.translator != None:
+      if  args.translator not in ref:
+        raise RuntimeError(f"Translator {args.translator} was not found")
+      else:
+        LOG.info(f"Selecting references from translator {args.translator}")
 
-  if args.translator == None and len(ref) > 1:
-    raise RuntimeError("Multiple translators -- need to specify which one to choose")
+    if args.translator == None:
+      if len(ref) > 1:
+        raise RuntimeError("Multiple translators -- need to specify which one to choose")
+      else:
+        LOG.info("Selecting the only translation")
+  else:
+    if args.translator != None:
+      raise RuntimeError("Translator specified, but no reference found")
 
   # write source
   src_file = f"{args.out_stem}.{src_lang}"
