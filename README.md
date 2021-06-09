@@ -21,4 +21,4 @@ Requires python >= 3.6
     wmt-wrap -s newsdev2021.ha-en.source.xml -t newsdev2021.ha-en.hypo.en -n UEDIN > newsdev2021.ha-en.hypo.en.xml
   ```
 ## API Usage
- You can also use the tools via the API. See `test/test-wrap-unwrap.py` for a smaple
+ You can also use the tools via the API. See `test/test-wrap-unwrap.py` for a sample
