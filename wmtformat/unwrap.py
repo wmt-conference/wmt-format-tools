@@ -13,21 +13,24 @@ import lxml.etree as ET
 
 LOG = logging.getLogger(__name__)
 
+DEFAULT_TRANSLATOR = "DEFAULT"
 
-def main():
-  logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
-  parser = argparse.ArgumentParser()
-  parser.add_argument("-i", "--in-file", type=argparse.FileType('r'), default=sys.stdin)
-  parser.add_argument("--translator", help="Which translator to use for the reference side")
-  parser.add_argument("-o", "--out-stem", required=True)
-  parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
-  args = parser.parse_args()
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE"):
+  """
+  Unwraps an xml file in WMT format, producing source and (if present) reference files
 
-  tree = ET.parse(args.in_file) 
+  :param xml_file: The xml file (or fd)
+  :param missing_message: The message to insert when no reference
 
+  :returns: A tuple src-lang, src-lines, ref-lang, {translator-A : reflines-A, ...}
+
+  If there is no reference, ref-lang is None, and the dictionary is empty.
+  """
+  tree = ET.parse(xml_file) 
 
   # Find and check  the source langs, ref langs and translators
   src_langs, ref_langs, translators = set(), set(), set()
+
   for src_doc in tree.getroot().findall(".//src"):
     src_langs.add(src_doc.get("lang"))
 
@@ -42,60 +45,97 @@ def main():
   if len(src_langs) == 0:
     raise RuntimeError("No source languages found")
 
+  src_lang = src_langs.pop()
+  src = []
+
   if len(ref_langs) > 1:
     raise RuntimeError("Multiple reference languages found -- this case is not currently handled")
 
-  if len(translators) > 1 and args.translator == None:
-    raise RuntimeError("Multiple translators -- need to specify which one to choose")
 
-  if args.translator != None and args.translator not in translators:
-    raise RuntimeError(f"No references found for specified translator ({args.translator})") 
-
-
-  # There is exactly one of these
-  src_lang = src_langs.pop()
-
-  src_file = f"{args.out_stem}.{src_lang}"
-  LOG.info(f"Extracting {src_lang} sentences to {src_file}")
-
-  rfh = None
   if len(ref_langs) > 0:
+    if len(translators) == 0:
+      LOG.info("No translator identifiers found -- reading first translation for each document")
+      translators.add(DEFAULT_TRANSLATOR)
     ref_lang = ref_langs.pop()
-    ref_file = f"{args.out_stem}.{ref_lang}"
-    LOG.info(f"Extracting {ref_lang} sentences to {ref_file}")
-    rfh = open(ref_file, "w")
+    ref = {translator : [] for translator in translators}
   else:
-    LOG.warn("No reference languages found -- not creating reference file")
+    LOG.info("No references found")
+    ref_lang = None
+    ref = {}
+
 
   # Extract text
-  src_sent_count,ref_sent_count,doc_count = 0,0,0
-  with open(f"{args.out_stem}.{src_lang}", "w") as sfh:
-    for doc in tree.getroot().findall(".//doc"):
-      doc_count += 1
-      src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
-      if rfh: 
-        ref_docs = doc.findall(".//ref")
-        ref_doc = None
-        trans_to_ref  = {ref.get("translator"): ref for ref in ref_docs}
-        if args.translator and len(trans_to_ref) > 1:
-          # More than one translation exists, and one has been selected on command line
-          ref_doc = trans_to_ref.get(args.translator, None)
-        else:
-          # Else just take the first ref
-          ref_doc = ref_docs[0] if len(ref_docs) else None
-        ref_sents = {int(seg.get("id")): seg.text for seg in ref_doc.findall(f".//seg")} if ref_doc is not None else {}
-      for seg_id in sorted(src_sents.keys()):
-        print(src_sents[seg_id], file=sfh)
-        src_sent_count += 1
-        if rfh:
-          ref_sent = ref_sents.get(seg_id, args.missing_translation_message)
-          print(ref_sent, file=rfh)
-          ref_sent_count += 1
+  src_sent_count,doc_count = 0,0
+  for doc in tree.getroot().findall(".//doc"):
+    doc_count += 1
+    src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
+    if ref_lang: 
+      ref_docs = doc.findall(".//ref")
+      trans_to_ref = {}
 
-    LOG.info(f"Extracted {doc_count} document(s) containing {src_sent_count} sentences in {src_lang}")
-    if rfh:
-      LOG.info(f"... and {ref_sent_count} sentences in {ref_lang}")
-      rfh.close()
+      # If no translator identifiers, we just read one reference (if any) 
+      # If there are translator identifiers, we add a reference for each translator
+
+      def get_ref_sents(ref_doc):
+        return {int(seg.get("id")): seg.text for seg in ref_doc.findall(f".//seg")}
+
+      if len(translators) == 1 and DEFAULT_TRANSLATOR in translators:
+        if len(ref_docs):
+          trans_to_ref[DEFAULT_TRANSLATOR] = get_ref_sents(ref_docs[0])
+        else:
+          trans_to_ref[DEFAULT_TRANSLATOR] = {}
+      else:
+        trans_to_ref  = {ref_doc.get("translator"): get_ref_sents(ref_doc) for ref_doc in ref_docs}
+
+    for seg_id in sorted(src_sents.keys()):
+      src.append(src_sents[seg_id])
+      src_sent_count += 1
+      if ref_lang:
+        for translator in translators:
+          ref[translator].append(trans_to_ref.get(translator, {translator: {}}).get(seg_id, missing_message))
+
+  LOG.info(f"Extracted {doc_count} document(s) containing {src_sent_count} sentences in {src_lang}")
+
+
+  return src_lang,src,ref_lang,ref
+
+def main():
+  logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-i", "--in-file", type=argparse.FileType('r'), default=sys.stdin)
+  parser.add_argument("--translator", help="Which translator to use for the reference side")
+  parser.add_argument("-o", "--out-stem", required=True)
+  parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
+  args = parser.parse_args()
+
+  src_lang, src, ref_lang, ref = unwrap(args.in_file, args.missing_translation_message)
+ 
+  # Check translator
+  if args.translator != None and args.translator not in ref:
+    raise RuntimeError(f"Translator {args.translator} was not found")
+
+  if args.translator == None and len(ref) > 1:
+    raise RuntimeError("Multiple translators -- need to specify which one to choose")
+
+  # write source
+  src_file = f"{args.out_stem}.{src_lang}"
+  LOG.info(f"Extracting {src_lang} sentences to {src_file}")
+  with open(src_file, "w") as sfh:
+    for line in src:
+      print(line, file=sfh)
+
+  # optionally write refs
+  if ref_lang:
+    ref_file = f"{args.out_stem}.{ref_lang}"
+    LOG.info(f"Extracting {ref_lang} sentences to {ref_file}")
+    if args.translator:
+      ref_lines = ref[args.translator]
+    else:
+      # Should only be one reference
+      ref_lines = list(ref.values())[0]
+    with open(ref_file, "w") as rfh:
+      for line in ref_lines:
+        print(line, file=rfh)
 
 
 if __name__ == "__main__":
