@@ -13,18 +13,20 @@ import lxml.etree as ET
 
 LOG = logging.getLogger(__name__)
 
-def main():
-  logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
-  parser = argparse.ArgumentParser()
-  parser.add_argument("-s", "--source-xml-file", help="XML source file", required=True)
-  parser.add_argument("-t", "--hypo-txt-file", help="Text file containing translations, ordered as in source-file", required=True)
-  parser.add_argument("-n", "--name", help="Name of MT system", default="MT")
-  args = parser.parse_args()
+def wrap(source_xml_file, hypo_txt_file, name="MT"):
+  """
+    Wraps a hypothesis file in xml, using WMT format
+    
+    :param source_xml_file: An XML file containing the source documents
+    :param hypo_txt_file: A text file containing the translations
+    :param name: (optional) system name
 
+    :returns: The xml, as a string.
+  """
   parser = ET.XMLParser(remove_blank_text=True)
-  tree = ET.parse(args.source_xml_file, parser)
+  tree = ET.parse(source_xml_file, parser)
   hypo_count = 0
-  with open(args.hypo_txt_file) as hfh:
+  with open(hypo_txt_file) as hfh:
     for doc in tree.getroot().findall(".//doc"):
       source_segs = doc.findall(".//src//seg")
       hypo_segs = []
@@ -38,7 +40,7 @@ def main():
 
       # insert hyp element into doc
       hyp = ET.SubElement(doc, "hyp")
-      hyp.attrib["system"] = args.name
+      hyp.attrib["system"] = name
       for i,hypo_seg in enumerate(hypo_segs):
         seg = ET.SubElement(hyp, "seg")
         seg.attrib["id"] = str(i+1)
@@ -47,9 +49,19 @@ def main():
     if line != "":
       raise RuntimeError("Hypothesis file contains too many lines")
 
-  sys.stdout.write(ET.tostring(tree, pretty_print=True, xml_declaration=True, encoding='utf8').decode())
-  LOG.info(f"Wrapped {hypo_count} lines of system {args.name}")
+  LOG.info(f"Wrapped {hypo_count} lines of system {name}")
+  return ET.tostring(tree, pretty_print=True, xml_declaration=True, encoding='utf8').decode()
 
+def main():
+  logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-s", "--source-xml-file", help="XML source file", required=True)
+  parser.add_argument("-t", "--hypo-txt-file", help="Text file containing translations, ordered as in source-file", required=True)
+  parser.add_argument("-n", "--name", help="Name of MT system", default="MT")
+  args = parser.parse_args()
+
+  xmlstring = wrap(args.source_xml_file, args.hypo_txt_file, args.name)
+  print(xmlstring, end="")
 
 if __name__ == "__main__":
   main()
