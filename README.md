@@ -18,7 +18,7 @@ Requires python >= 3.6
 3. Translate text to give (eg) `newsdev2021.ha-en.hypo.en`
 4. Wrap translation in xml, including team name
   ```
-    wmt-wrap -s newsdev2021.ha-en.source.xml -t newsdev2021.ha-en.hypo.en -n UEDIN > newsdev2021.ha-en.hypo.en.xml
+    wmt-wrap -s newsdev2021.ha-en.source.xml -t newsdev2021.ha-en.hypo.en -n UEDIN -l en > newsdev2021.ha-en.hypo.en.xml
   ```
 ## API Usage
  You can also use the tools via the API. See `test/test-wrap-unwrap.py` for a sample

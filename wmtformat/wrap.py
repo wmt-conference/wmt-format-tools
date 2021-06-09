@@ -13,7 +13,7 @@ import lxml.etree as ET
 
 LOG = logging.getLogger(__name__)
 
-def wrap(source_xml_file, hypo_txt_file, name="MT"):
+def wrap(source_xml_file, hypo_txt_file, language, name="MT"):
   """
     Wraps a hypothesis file in xml, using WMT format
     
@@ -42,6 +42,7 @@ def wrap(source_xml_file, hypo_txt_file, name="MT"):
       hyp = ET.SubElement(doc, "hyp")
       para = ET.SubElement(hyp, "p")
       hyp.attrib["system"] = name
+      hyp.attrib["language"] = language
       for i,hypo_seg in enumerate(hypo_segs):
         seg = ET.SubElement(para, "seg")
         seg.attrib["id"] = str(i+1)
@@ -58,10 +59,11 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("-s", "--source-xml-file", help="XML source file", required=True)
   parser.add_argument("-t", "--hypo-txt-file", help="Text file containing translations, ordered as in source-file", required=True)
+  parser.add_argument("-l", "--language", help="Translation language", required=True)
   parser.add_argument("-n", "--name", help="Name of MT system", default="MT")
   args = parser.parse_args()
 
-  xmlstring = wrap(args.source_xml_file, args.hypo_txt_file, args.name)
+  xmlstring = wrap(args.source_xml_file, args.hypo_txt_file, args.language, args.name)
   print(xmlstring, end="")
 
 if __name__ == "__main__":

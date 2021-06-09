@@ -16,6 +16,7 @@ Reference = element ref {
   Paragraph+
 }
 System = element hyp {
+  attribute lang { xsd:language },
   attribute system { xsd:string },
   Paragraph+
 }
