@@ -40,9 +40,10 @@ def wrap(source_xml_file, hypo_txt_file, name="MT"):
 
       # insert hyp element into doc
       hyp = ET.SubElement(doc, "hyp")
+      para = ET.SubElement(hyp, "p")
       hyp.attrib["system"] = name
       for i,hypo_seg in enumerate(hypo_segs):
-        seg = ET.SubElement(hyp, "seg")
+        seg = ET.SubElement(para, "seg")
         seg.attrib["id"] = str(i+1)
         seg.text = hypo_seg
     line = hfh.readline()
@@ -50,7 +51,7 @@ def wrap(source_xml_file, hypo_txt_file, name="MT"):
       raise RuntimeError("Hypothesis file contains too many lines")
 
   LOG.info(f"Wrapped {hypo_count} lines of system {name}")
-  return ET.tostring(tree, pretty_print=True, xml_declaration=True, encoding='utf8').decode()
+  return ET.tostring(tree, pretty_print=True, xml_declaration=True, encoding='utf-8').decode()
 
 def main():
   logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)

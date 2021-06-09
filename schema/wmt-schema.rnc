@@ -1,0 +1,34 @@
+Segment = element seg {
+  attribute id { xsd:positiveInteger },
+  text
+}
+Paragraph = element p {
+  Segment+
+}
+Source = element src {
+  attribute lang { xsd:language },
+  attribute translator { xsd:string }?,
+  Paragraph+
+}
+Reference = element ref {
+  attribute lang { xsd:language },
+  attribute translator { xsd:string }?,
+  Paragraph+
+}
+System = element hyp {
+  attribute system { xsd:string },
+  Paragraph+
+}
+Document = element doc {
+  attribute id { xsd:string },
+  attribute origlang { xsd:language },
+  attribute testsuite { xsd:string }?,
+  Source,
+  Reference*,
+  System*
+}
+Dataset = element dataset {
+  attribute id { xsd:string },
+  Document+
+}
+start = Dataset
