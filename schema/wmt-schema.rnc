@@ -3,7 +3,7 @@ Segment = element seg {
   text
 }
 Paragraph = element p {
-  Segment+
+  Segment*
 }
 Source = element src {
   attribute lang { xsd:language },
