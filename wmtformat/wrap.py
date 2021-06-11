@@ -42,7 +42,7 @@ def wrap(source_xml_file, hypo_txt_file, language, name="MT"):
       hyp = ET.SubElement(doc, "hyp")
       para = ET.SubElement(hyp, "p")
       hyp.attrib["system"] = name
-      hyp.attrib["language"] = language
+      hyp.attrib["lang"] = language
       for i,hypo_seg in enumerate(hypo_segs):
         seg = ET.SubElement(para, "seg")
         seg.attrib["id"] = str(i+1)
