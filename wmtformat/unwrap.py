@@ -15,7 +15,7 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_TRANSLATOR = "DEFAULT"
 
-def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE"):
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False):
   """
   Unwraps an xml file in WMT format, producing source and (if present) reference files
 
@@ -67,6 +67,8 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE"):
   # Extract text
   src_sent_count,doc_count = 0,0
   for doc in tree.getroot().findall(".//doc"):
+    if document_boundaries and doc_count:
+      src.append("")
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
     if ref_lang: 
@@ -106,9 +108,10 @@ def main():
   parser.add_argument("--translator", help="Which translator to use for the reference side")
   parser.add_argument("-o", "--out-stem", required=True)
   parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
+  parser.add_argument("-d", "--document-boundaries", action="store_true", help="Mark document boundaries by an empty line")
   args = parser.parse_args()
 
-  src_lang, src, ref_lang, ref = unwrap(args.in_file, args.missing_translation_message)
+  src_lang, src, ref_lang, ref = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries)
  
   # Check translator
   if ref_lang:
