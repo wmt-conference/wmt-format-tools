@@ -69,9 +69,11 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
   for doc in tree.getroot().findall(".//doc"):
     if document_boundaries and doc_count:
       src.append("")
+      for ref_set in ref.values():
+        ref_set.append("")
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
-    if ref_lang: 
+    if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
 
