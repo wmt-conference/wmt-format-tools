@@ -9,27 +9,32 @@ import argparse
 import logging
 import sys
 
+
 import lxml.etree as ET
 
 LOG = logging.getLogger(__name__)
 
 DEFAULT_TRANSLATOR = "DEFAULT"
 
-def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False):
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False):
   """
   Unwraps an xml file in WMT format, producing source and (if present) reference files
 
   :param xml_file: The xml file (or fd)
   :param missing_message: The message to insert when no reference
 
-  :returns: A tuple src-lang, src-lines, ref-lang, {translator-A : reflines-A, ...}
+  :returns: src_lang, src_lines, ref_lang, ref_lines, hyp_lang, hyp_lines
 
-  If there is no reference, ref-lang is None, and the dictionary is empty.
+  ref_lines maps translator to lines
+  hyp_lines maps system to lines
+
+  ref_lang and hyp_lang may be None, and then their lines are empty
+  note: a single language is assumed for each of sources, refs and hyps 
   """
   tree = ET.parse(xml_file) 
 
-  # Find and check  the source langs, ref langs and translators
-  src_langs, ref_langs, translators = set(), set(), set()
+  # Find and check  the documents (src, ref, hyp)
+  src_langs, ref_langs, hyp_langs, translators, systems = set(), set(), set(), set(), set()
 
   for src_doc in tree.getroot().findall(".//src"):
     src_langs.add(src_doc.get("lang"))
@@ -38,6 +43,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     ref_langs.add(ref_doc.get("lang"))
     translator = ref_doc.get("translator")
     if translator: translators.add(translator)
+
+  for hyp_doc in tree.getroot().findall(".//hyp"):
+    hyp_langs.add(hyp_doc.get("lang"))
+    systems.add(hyp_doc.get("system"))
   
   if len(src_langs) >  1:
     raise RuntimeError("Multiple source languages found")
@@ -49,7 +58,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
   src = []
 
   if len(ref_langs) > 1:
-    raise RuntimeError("Multiple reference languages found -- this case is not currently handled")
+    raise RuntimeError("Multiple reference languages found -- this case is not handled")
 
 
   if len(ref_langs) > 0:
@@ -63,33 +72,50 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     ref_lang = None
     ref = {}
 
+  if len(hyp_langs) > 1:
+    raise RuntimeError("Multiple hypothesis languages found -- this case is not handled")
+
+  if len(hyp_langs) > 0:
+    hyp = {system: [] for system in systems}
+    hyp_lang = hyp_langs.pop()
+  else:
+    hyp = {}
+    hyp_lang = None
 
   # Extract text
   src_sent_count,doc_count = 0,0
   for doc in tree.getroot().findall(".//doc"):
+    if no_testsuites and "testsuite" in doc.attrib:
+      continue
     if document_boundaries and doc_count:
       src.append("")
       for ref_set in ref.values():
         ref_set.append("")
+      for hyp_set in hyp.values():
+        hyp_set.append("")
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
+    def get_sents(doc):
+      return {int(seg.get("id")): seg.text for seg in doc.findall(f".//seg")}
     if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
 
       # If no translator identifiers, we just read one reference (if any) 
       # If there are translator identifiers, we add a reference for each translator
-
-      def get_ref_sents(ref_doc):
-        return {int(seg.get("id")): seg.text for seg in ref_doc.findall(f".//seg")}
-
       if len(translators) == 1 and DEFAULT_TRANSLATOR in translators:
         if len(ref_docs):
           trans_to_ref[DEFAULT_TRANSLATOR] = get_ref_sents(ref_docs[0])
         else:
           trans_to_ref[DEFAULT_TRANSLATOR] = {}
       else:
-        trans_to_ref  = {ref_doc.get("translator"): get_ref_sents(ref_doc) for ref_doc in ref_docs}
+        trans_to_ref  = {ref_doc.get("translator"): get_sents(ref_doc) for ref_doc in ref_docs}
+
+    if hyp_lang:
+      hyp_docs = doc.findall(".//hyp")
+      system_to_ref = {hyp_doc.get("system") : get_sents(hyp_doc) for hyp_doc in hyp_docs}
+
+
 
     for seg_id in sorted(src_sents.keys()):
       src.append(src_sents[seg_id])
@@ -97,23 +123,27 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
       if ref_lang:
         for translator in translators:
           ref[translator].append(trans_to_ref.get(translator, {translator: {}}).get(seg_id, missing_message))
+      if hyp_lang:
+        for system in systems:
+          hyp[system].append(system_to_ref.get(system, {system: {}}).get(seg_id, missing_message))
 
   LOG.info(f"Extracted {doc_count} document(s) containing {src_sent_count} sentences in {src_lang}")
 
 
-  return src_lang,src,ref_lang,ref
+  return src_lang, src, ref_lang, ref, hyp_lang, hyp
 
 def main():
   logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
   parser = argparse.ArgumentParser()
   parser.add_argument("-i", "--in-file", type=argparse.FileType('r'), default=sys.stdin)
   parser.add_argument("--translator", help="Which translator to use for the reference side")
-  parser.add_argument("-o", "--out-stem", required=True)
+  parser.add_argument("--no-testsuites", help="Do not output test suites", action="store_true")
+  parser.add_argument("-o", "--out-stem")
   parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
   parser.add_argument("-d", "--document-boundaries", action="store_true", help="Mark document boundaries by an empty line")
   args = parser.parse_args()
 
-  src_lang, src, ref_lang, ref = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries)
+  src_lang, src, ref_lang, ref, hyp_lang, hyp = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries, args.no_testsuites)
  
   # Check translator
   if ref_lang:
@@ -133,15 +163,19 @@ def main():
       raise RuntimeError("Translator specified, but no reference found")
 
   # write source
-  src_file = f"{args.out_stem}.{src_lang}"
+  out_stem = args.out_stem
+  if out_stem == None:
+    out_stem = "wmt"
+
+  src_file = f"{out_stem}.{src_lang}"
   LOG.info(f"Extracting {src_lang} sentences to {src_file}")
   with open(src_file, "w") as sfh:
     for line in src:
       print(line, file=sfh)
 
-  # optionally write refs
+  # write refs, if found
   if ref_lang:
-    ref_file = f"{args.out_stem}.{ref_lang}"
+    ref_file = f"{out_stem}.{ref_lang}"
     LOG.info(f"Extracting {ref_lang} sentences to {ref_file}")
     if args.translator:
       ref_lines = ref[args.translator]
@@ -151,6 +185,17 @@ def main():
     with open(ref_file, "w") as rfh:
       for line in ref_lines:
         print(line, file=rfh)
+
+  # write hypotheses, if found
+  if hyp_lang:
+    for system, hyp_lines in hyp.items():
+      # FIXME risk of clashing names ...
+      system_name = system.replace(" ", "_").replace("/", "-")
+      hyp_file = f"{out_stem}.{system_name}.{hyp_lang}"
+      LOG.info(f"Extracting output from '{system}' to {hyp_file}")
+      with open(hyp_file, "w") as fh:
+        for line in hyp_lines:
+          print(line, file=fh)
 
 
 if __name__ == "__main__":
