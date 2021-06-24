@@ -96,7 +96,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
     def get_sents(doc):
-      return {int(seg.get("id")): seg.text for seg in doc.findall(f".//seg")}
+      return {int(seg.get("id")): seg.text if seg.text else ""  for seg in doc.findall(f".//seg")}
     if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
