@@ -1,5 +1,6 @@
 Segment = element seg {
   attribute id { xsd:positiveInteger },
+  attribute type { xsd:string }?,
   text
 }
 Paragraph = element p {
