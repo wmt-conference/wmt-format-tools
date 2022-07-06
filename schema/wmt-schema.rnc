@@ -28,8 +28,13 @@ Document = element doc {
   Reference*,
   System*
 }
-Dataset = element dataset {
+Collection = element collection {
   attribute id { xsd:string },
   Document+
+}
+Dataset = element dataset {
+  attribute id { xsd:string },
+  Collection*,
+  Document*
 }
 start = Dataset
