@@ -1,2 +1,5 @@
 .history-*
 __pycache__
+*~
+*.swp
+*.swo
