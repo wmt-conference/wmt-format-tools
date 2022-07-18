@@ -1,5 +1,6 @@
 Segment = element seg {
   attribute id { xsd:positiveInteger },
+  attribute type { xsd:string }?,
   text
 }
 Paragraph = element p {
@@ -28,8 +29,13 @@ Document = element doc {
   Reference*,
   System*
 }
-Dataset = element dataset {
+Collection = element collection {
   attribute id { xsd:string },
   Document+
+}
+Dataset = element dataset {
+  attribute id { xsd:string },
+  Collection*,
+  Document*
 }
 start = Dataset
