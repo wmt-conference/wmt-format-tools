@@ -105,7 +105,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
       # If there are translator identifiers, we add a reference for each translator
       if len(translators) == 1 and DEFAULT_TRANSLATOR in translators:
         if len(ref_docs):
-          trans_to_ref[DEFAULT_TRANSLATOR] = get_ref_sents(ref_docs[0])
+          trans_to_ref[DEFAULT_TRANSLATOR] = get_sents(ref_docs[0])
         else:
           trans_to_ref[DEFAULT_TRANSLATOR] = {}
       else:
