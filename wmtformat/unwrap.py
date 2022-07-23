@@ -57,6 +57,8 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
   src_lang = src_langs.pop()
   src = []
 
+  doc_ids = []
+
   if len(ref_langs) > 1:
     raise RuntimeError("Multiple reference languages found -- this case is not handled")
 
@@ -95,8 +97,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
         hyp_set.append("")
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
+
     def get_sents(doc):
       return {int(seg.get("id")): seg.text if seg.text else ""  for seg in doc.findall(f".//seg")}
+
     if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
@@ -115,11 +119,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
       hyp_docs = doc.findall(".//hyp")
       system_to_ref = {hyp_doc.get("system") : get_sents(hyp_doc) for hyp_doc in hyp_docs}
 
-
-
     for seg_id in sorted(src_sents.keys()):
       src.append(src_sents[seg_id])
       src_sent_count += 1
+      doc_ids.append(doc.attrib["id"])
       if ref_lang:
         for translator in translators:
           ref[translator].append(trans_to_ref.get(translator, {translator: {}}).get(seg_id, missing_message))
@@ -129,8 +132,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
   LOG.info(f"Extracted {doc_count} document(s) containing {src_sent_count} sentences in {src_lang}")
 
-
-  return src_lang, src, ref_lang, ref, hyp_lang, hyp
+  return src_lang, src, ref_lang, ref, hyp_lang, hyp, doc_ids
 
 def main():
   logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
@@ -138,12 +140,12 @@ def main():
   parser.add_argument("-i", "--in-file", type=argparse.FileType('r'), default=sys.stdin)
   parser.add_argument("--translator", help="Which translator to use for the reference side")
   parser.add_argument("--no-testsuites", help="Do not output test suites", action="store_true")
-  parser.add_argument("-o", "--out-stem")
+  parser.add_argument("-o", "--out-stem", default="wmt")
   parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
   parser.add_argument("-d", "--document-boundaries", action="store_true", help="Mark document boundaries by an empty line")
   args = parser.parse_args()
 
-  src_lang, src, ref_lang, ref, hyp_lang, hyp = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries, args.no_testsuites)
+  src_lang, src, ref_lang, ref, hyp_lang, hyp, doc_ids = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries, args.no_testsuites)
  
   # Check translator
   if ref_lang:
@@ -164,8 +166,6 @@ def main():
 
   # write source
   out_stem = args.out_stem
-  if out_stem == None:
-    out_stem = "wmt"
 
   src_file = f"{out_stem}.{src_lang}"
   LOG.info(f"Extracting {src_lang} sentences to {src_file}")
@@ -185,6 +185,13 @@ def main():
     with open(ref_file, "w") as rfh:
       for line in ref_lines:
         print(line, file=rfh)
+
+  if doc_ids:
+    doc_file = f"{out_stem}.docid"
+    LOG.info(f"Extracting doc IDS to {doc_file}")
+    with open(doc_file, "w") as docfh:
+      for line in doc_ids:
+        print(line, file=docfh)
 
   # write hypotheses, if found
   if hyp_lang:
