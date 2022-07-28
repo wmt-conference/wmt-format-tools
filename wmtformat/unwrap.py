@@ -16,7 +16,7 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_TRANSLATOR = "DEFAULT"
 
-def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False):
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False, collections=[]):
   """
   Unwraps an xml file in WMT format, producing source and (if present) reference files
 
@@ -87,6 +87,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
   for doc in tree.getroot().findall(".//doc"):
     if no_testsuites and "testsuite" in doc.attrib:
       continue
+    if collections:
+      parent = doc.getparent()
+      if parent.tag != "collection" or parent.get('id') not in collections:
+        continue
     if document_boundaries and doc_count:
       src.append("")
       for ref_set in ref.values():
@@ -141,9 +145,14 @@ def main():
   parser.add_argument("-o", "--out-stem")
   parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
   parser.add_argument("-d", "--document-boundaries", action="store_true", help="Mark document boundaries by an empty line")
+  parser.add_argument("-c", "--collections", help="Limit unwrapping to these collections", nargs='+', default = [])
   args = parser.parse_args()
 
-  src_lang, src, ref_lang, ref, hyp_lang, hyp = unwrap(args.in_file, args.missing_translation_message, args.document_boundaries, args.no_testsuites)
+  src_lang, src, ref_lang, ref, hyp_lang, hyp = unwrap(args.in_file, \
+    missing_message = args.missing_translation_message, \
+    document_boundaries =  args.document_boundaries, \
+    no_testsuites = args.no_testsuites,\
+    collections = args.collections)
  
   # Check translator
   if ref_lang:
