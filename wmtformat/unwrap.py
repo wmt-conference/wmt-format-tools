@@ -16,7 +16,7 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_TRANSLATOR = "DEFAULT"
 
-def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False, collections=[]):
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False, collection=None):
   """
   Unwraps an xml file in WMT format, producing source and (if present) reference files
 
@@ -32,19 +32,30 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
   note: a single language is assumed for each of sources, refs and hyps 
   """
   tree = ET.parse(xml_file) 
+  if collection:
+    collection_nodes = tree.getroot().findall(f".//collection[@id='{collection}']")
+    if len(collection_nodes) == 0:
+      raise RuntimeError(f"Collection {collection} not found in the document")
+    if len(collection_nodes) > 1:
+      LOG.warn("Multiple {collection} nodes found. Selecting the first")
+    root = collection_nodes[0]
+  else:
+    root = tree.getroot()
+
+    
 
   # Find and check  the documents (src, ref, hyp)
   src_langs, ref_langs, hyp_langs, translators, systems = set(), set(), set(), set(), set()
 
-  for src_doc in tree.getroot().findall(".//src"):
+  for src_doc in root.findall(".//src"):
     src_langs.add(src_doc.get("lang"))
 
-  for ref_doc in tree.getroot().findall(".//ref"):
+  for ref_doc in root.findall(".//ref"):
     ref_langs.add(ref_doc.get("lang"))
     translator = ref_doc.get("translator")
     if translator: translators.add(translator)
 
-  for hyp_doc in tree.getroot().findall(".//hyp"):
+  for hyp_doc in root.findall(".//hyp"):
     hyp_langs.add(hyp_doc.get("lang"))
     systems.add(hyp_doc.get("system"))
   
@@ -84,13 +95,9 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
   # Extract text
   src_sent_count,doc_count = 0,0
-  for doc in tree.getroot().findall(".//doc"):
+  for doc in root.findall(".//doc"):
     if no_testsuites and "testsuite" in doc.attrib:
       continue
-    if collections:
-      parent = doc.getparent()
-      if parent.tag != "collection" or parent.get('id') not in collections:
-        continue
     if document_boundaries and doc_count:
       src.append("")
       for ref_set in ref.values():
@@ -145,14 +152,14 @@ def main():
   parser.add_argument("-o", "--out-stem")
   parser.add_argument("-m", "--missing-translation-message", default="NO TRANSLATION AVAILABLE", help="Message to insert when translations are missing")
   parser.add_argument("-d", "--document-boundaries", action="store_true", help="Mark document boundaries by an empty line")
-  parser.add_argument("-c", "--collections", help="Limit unwrapping to these collections", nargs='+', default = [])
+  parser.add_argument("-c", "--collection", help="Limit unwrapping to this collection", default=None)
   args = parser.parse_args()
 
   src_lang, src, ref_lang, ref, hyp_lang, hyp = unwrap(args.in_file, \
     missing_message = args.missing_translation_message, \
     document_boundaries =  args.document_boundaries, \
     no_testsuites = args.no_testsuites,\
-    collections = args.collections)
+    collection = args.collection)
  
   # Check translator
   if ref_lang:
