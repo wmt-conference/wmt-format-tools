@@ -25,6 +25,7 @@ Document = element doc {
   attribute id { xsd:string },
   attribute origlang { xsd:language },
   attribute testsuite { xsd:string }?,
+  attribute domain { xsd:string }?,
   Source,
   Reference*,
   System*
