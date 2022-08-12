@@ -171,7 +171,7 @@ def main():
 
     if args.translator == None:
       if len(ref) > 1:
-        raise RuntimeError("Multiple translators -- need to specify which one to choose")
+        raise RuntimeError(f"The following translators were found: {list(ref.keys())}\nPlease specify a translator using the --translator argument ")
       else:
         LOG.info("Selecting the only translation")
   else:
