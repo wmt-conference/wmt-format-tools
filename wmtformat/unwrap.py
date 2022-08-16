@@ -49,6 +49,9 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
   for src_doc in root.findall(".//src"):
     src_langs.add(src_doc.get("lang"))
+    # Could be source translator (if this document was born in the target language)
+    translator = src_doc.get("translator")
+    if translator: translators.add(translator)
 
   for ref_doc in root.findall(".//ref"):
     ref_langs.add(ref_doc.get("lang"))
@@ -106,6 +109,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
         hyp_set.append("")
     doc_count += 1
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
+    src_translator = doc.find("./src").get("translator")
     def get_sents(doc):
       return {int(seg.get("id")): seg.text if seg.text else ""  for seg in doc.findall(f".//seg")}
     if ref_lang:
@@ -119,13 +123,18 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
           trans_to_ref[DEFAULT_TRANSLATOR] = get_sents(ref_docs[0])
         else:
           trans_to_ref[DEFAULT_TRANSLATOR] = {}
+      elif src_translator != None:
+        if len(ref_docs) > 1:
+          raise RuntimeError(f"Document {doc.get('id')} has muliple reference, but looks like a reverse translation")
+        if ref_docs[0].get("translator") != None:
+          raise RuntimeError(f"Document {doc.get('id')} has translators on source and reference")
+        trans_to_ref  = {src_translator : get_sents(ref_docs[0])}
       else:
         trans_to_ref  = {ref_doc.get("translator"): get_sents(ref_doc) for ref_doc in ref_docs}
 
     if hyp_lang:
       hyp_docs = doc.findall(".//hyp")
       system_to_ref = {hyp_doc.get("system") : get_sents(hyp_doc) for hyp_doc in hyp_docs}
-
 
 
     for seg_id in sorted(src_sents.keys()):
