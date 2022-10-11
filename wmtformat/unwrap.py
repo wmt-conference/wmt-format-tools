@@ -126,6 +126,8 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
       elif src_translator != None:
         if len(ref_docs) > 1:
           raise RuntimeError(f"Document {doc.get('id')} has muliple reference, but looks like a reverse translation")
+        if len(ref_docs) == 0:
+          raise RuntimeError(f"Document {doc.get('id')} has a source translator tag, but no reference ")
         if ref_docs[0].get("translator") != None:
           raise RuntimeError(f"Document {doc.get('id')} has translators on source and reference")
         trans_to_ref  = {src_translator : get_sents(ref_docs[0])}
