@@ -16,7 +16,7 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_TRANSLATOR = "DEFAULT"
 
-def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False, collection=None):
+def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_boundaries=False, no_testsuites=False, collection=None, with_metainfo=False):
   """
   Unwraps an xml file in WMT format, producing source and (if present) reference files
 
@@ -43,8 +43,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     root = tree.getroot()
 
     
-
-  # Find and check  the documents (src, ref, hyp)
+  # Find and check the documents (src, ref, hyp)
   src_langs, ref_langs, hyp_langs, translators, systems = set(), set(), set(), set(), set()
 
   for src_doc in root.findall(".//src"):
@@ -70,6 +69,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
   src_lang = src_langs.pop()
   src = []
+  metainfo = []
 
   if len(ref_langs) > 1:
     raise RuntimeError("Multiple reference languages found -- this case is not handled")
@@ -111,7 +111,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     src_sents = {int(seg.get("id")): seg.text for seg in doc.findall(".//src//seg")}
     src_translator = doc.find("./src").get("translator")
     def get_sents(doc):
-      return {int(seg.get("id")): seg.text if seg.text else ""  for seg in doc.findall(f".//seg")}
+      return {int(seg.get("id")): seg.text if seg.text else "" for seg in doc.findall(f".//seg")}
+    
+    meta = {"domain": doc.get("domain"), "docid": doc.get("id")}
+
     if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
@@ -130,9 +133,9 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
           raise RuntimeError(f"Document {doc.get('id')} has a source translator tag, but no reference ")
         if ref_docs[0].get("translator") != None:
           raise RuntimeError(f"Document {doc.get('id')} has translators on source and reference")
-        trans_to_ref  = {src_translator : get_sents(ref_docs[0])}
+        trans_to_ref = {src_translator : get_sents(ref_docs[0])}
       else:
-        trans_to_ref  = {ref_doc.get("translator"): get_sents(ref_doc) for ref_doc in ref_docs}
+        trans_to_ref = {ref_doc.get("translator"): get_sents(ref_doc) for ref_doc in ref_docs}
 
     if hyp_lang:
       hyp_docs = doc.findall(".//hyp")
@@ -141,6 +144,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
     for seg_id in sorted(src_sents.keys()):
       src.append(src_sents[seg_id])
+      metainfo.append(meta)
       src_sent_count += 1
       if ref_lang:
         for translator in translators:
@@ -151,8 +155,10 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
   LOG.info(f"Extracted {doc_count} document(s) containing {src_sent_count} sentences in {src_lang}")
 
-
-  return src_lang, src, ref_lang, ref, hyp_lang, hyp
+  if with_metainfo:
+    return src_lang, src, ref_lang, ref, hyp_lang, hyp, metainfo
+  else:
+    return src_lang, src, ref_lang, ref, hyp_lang, hyp
 
 def main():
   logging.basicConfig(format='%(asctime)s %(levelname)s: %(name)s:  %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
