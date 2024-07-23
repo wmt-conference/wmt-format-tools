@@ -21,6 +21,10 @@ System = element hyp {
   attribute system { xsd:string },
   Paragraph+
 }
+Supplement = element Supplement {
+  attribute type { xsd:string },
+  Paragraph+
+}
 Document = element doc {
   attribute id { xsd:string },
   attribute origlang { xsd:language },
@@ -28,7 +32,8 @@ Document = element doc {
   attribute domain { xsd:string }?,
   Source,
   Reference*,
-  System*
+  System*,
+  Supplement*
 }
 Collection = element collection {
   attribute id { xsd:string },
