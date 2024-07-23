@@ -153,7 +153,7 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
       src.append(src_sents[seg_id])
       metadata = meta.copy()
       for key in supplemental:
-        metadata[key] = src_sents[seg_id]
+        metadata[key] = supplemental[key][seg_id]
 
       metainfo.append(metadata)
       src_sent_count += 1
