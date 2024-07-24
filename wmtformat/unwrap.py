@@ -115,6 +115,13 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
     
     meta = {"domain": doc.get("domain"), "docid": doc.get("id")}
 
+    # there may be multiple supplemental data
+    supplemental = {}
+    if len(doc.findall(".//supplemental")) > 0:
+      for sup in doc.findall(".//supplemental"):
+        assert sup.get("type") not in supplemental, f"Multiple supplemental data of the same type found in document {doc.get('id')}"
+        supplemental[sup.get("type")] = get_sents(sup)
+
     if ref_lang:
       ref_docs = doc.findall(".//ref")
       trans_to_ref = {}
@@ -144,7 +151,11 @@ def unwrap(xml_file, missing_message="NO TRANSLATION AVAILABLE", document_bounda
 
     for seg_id in sorted(src_sents.keys()):
       src.append(src_sents[seg_id])
-      metainfo.append(meta)
+      metadata = meta.copy()
+      for key in supplemental:
+        metadata[key] = supplemental[key][seg_id]
+
+      metainfo.append(metadata)
       src_sent_count += 1
       if ref_lang:
         for translator in translators:

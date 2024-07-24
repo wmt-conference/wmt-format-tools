@@ -21,7 +21,7 @@ System = element hyp {
   attribute system { xsd:string },
   Paragraph+
 }
-Supplement = element Supplement {
+Supplemental = element supplemental {
   attribute type { xsd:string },
   Paragraph+
 }
@@ -33,7 +33,7 @@ Document = element doc {
   Source,
   Reference*,
   System*,
-  Supplement*
+  Supplemental*
 }
 Collection = element collection {
   attribute id { xsd:string },
