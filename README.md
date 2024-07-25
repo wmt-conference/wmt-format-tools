@@ -22,3 +22,8 @@ Requires python >= 3.6
   ```
 ## API Usage
  You can also use the tools via the API. See `test/test-wrap-unwrap.py` for a sample
+
+## Changelog
+
+### Version 0.4
+- Added an optional field `supplemental` which may contain any data collected with tests. For example, `type=clean_source` for human cleaned sources.
