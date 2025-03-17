@@ -38,13 +38,16 @@ def main():
         segment['srctranslator'] = src.get('translator')
       if segment.get('testsuite'):
         segment['testsuite'] = segment.get('testsuite')
-      segment_refs  = []
-      for ref,ref_segments in zip(refs,all_ref_segments):
+      for ref_id, (ref,ref_segments) in enumerate(zip(refs,all_ref_segments)):
         if i in ref_segments:
-          segment_refs.append({"text": ref_segments[i], "lang" : ref.get('lang')})
+          segment[f"ref{ref_id}text"] = ref_segments[i]
+          segment[f"ref{ref_id}lang"] = ref.get('lang')
+          
+          #segment_refs.append({"text": ref_segments[i], "lang" : ref.get('lang')})
           if ref.get('translator') != None:
-            segment_refs[-1]['translator'] = ref.get('translator')
-      segment['refs'] = segment_refs
+          #  segment_refs[-1]['translator'] = ref.get('translator')
+            segment[f'ref{ref_id}translator'] = ref.get('translator')
+      #segment['refs'] = segment_refs
       
       jsonlist.append(segment)
 
