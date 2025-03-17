@@ -10,21 +10,6 @@ import sys
 
 import lxml.etree as ET
 
-def doc2json(doc):
-  """Parse a document (source,target or hypothesis)"""
-  jsondoc = {}
-  translator = doc.get("translator")
-  if translator != None:
-    jsondoc["translator"] = translator
-  jsondoc["lang"] = doc.get("lang")
-  paras = []
-  for para in doc.findall("p"):
-    jsonpara = []
-    for segment in para.findall("seg"):
-      jsonpara.append(segment.text)
-    paras.append(jsonpara)
-  jsondoc['paragraphs'] = paras
-  return jsondoc
 
 def main():
   parser = argparse.ArgumentParser()
@@ -33,29 +18,37 @@ def main():
    
   args = parser.parse_args()
   tree = ET.parse(args.input).getroot()
-  jsontree = {}
-  jsontree['id'] = tree.get("id")
-  jsontree['docs'] = []
+  jsonlist = []
+  setid = tree.get("id")
   for doc in tree.findall("doc"):
-    jsondoc = {}
-    jsondoc["id"] = doc.get("id")
-    jsondoc["origlang"] = doc.get("origlang")
     src = doc.find("src")
-    jsonsrc = doc2json(src)
-    jsondoc['src'] = jsonsrc
     refs = doc.findall("ref")
-    if len(refs):
-      jsondoc['ref'] = []
-      for ref in refs:
-        jsonref = doc2json(ref)
-        jsondoc['ref'].append(jsonref)
-        
+    src_segments = {segment.get("id") : segment.text for segment in src.findall(".//seg")}
+    all_ref_segments = [
+      {segment.get("id") : segment.text for segment in ref.findall(".//seg")} for ref in refs
+    ]
+    for i,src_segment in src_segments.items():
+      segment = {}
+      segment['setid'] = setid
+      segment['src'] = src_segment
+      segment['docid'] = doc.get('id')
+      segment['origlang'] = doc.get('origlang')
+      segment['srclang'] = src.get('lang')
+      if src.get('translator') != None:
+        segment['srctranslator'] = src.get('translator')
+      if segment.get('testsuite'):
+        segment['testsuite'] = segment.get('testsuite')
+      segment_refs  = []
+      for ref,ref_segments in zip(refs,all_ref_segments):
+        if i in ref_segments:
+          segment_refs.append({"text": ref_segments[i], "lang" : ref.get('lang')})
+          if ref.get('translator') != None:
+            segment_refs[-1]['translator'] = ref.get('translator')
+      segment['refs'] = segment_refs
       
-    
-    
-    jsontree['docs'].append(jsondoc)
+      jsonlist.append(segment)
 
-  print(json.dumps(jsontree, indent=2), file=args.output)
+  print(json.dumps(jsonlist, indent=2), file=args.output)
 
 if __name__ == "__main__":
   main()
