@@ -28,8 +28,8 @@ def processDoc(doc, setid, collectionid, jsonlist):
       segment['collectionid'] = collectionid
     if src.get('translator') != None:
       segment['srctranslator'] = src.get('translator')
-    if segment.get('testsuite'):
-      segment['testsuite'] = segment.get('testsuite')
+    if doc.get('testsuite'):
+      segment['testsuite'] = doc.get('testsuite')
     if segment.get('type'):
       segment['type'] = segment.get('type')
     for ref,ref_segments in zip(refs,all_ref_segments):
