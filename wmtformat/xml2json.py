@@ -87,7 +87,6 @@ def main():
 
   for jsonitem in jsonlist:
     args.output.write(json.dumps(jsonitem, ensure_ascii=False) + "\n")
-  #print(json.dumps(jsonlist, indent=2, ensure_ascii=False), file=args.output)
 
 if __name__ == "__main__":
   main()
