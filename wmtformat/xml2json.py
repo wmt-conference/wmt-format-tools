@@ -17,6 +17,10 @@ def processDoc(doc, setid, collectionid, jsonlist):
   all_ref_segments = [
     {segment.get("id") : (segment.text, segment.get("type")) for segment in ref.findall(".//seg")} for ref in refs
   ]
+  hyps = doc.findall("hyp")
+  all_hyp_segments = [
+     {segment.get("id") : (segment.text, segment.get("type")) for segment in hyp.findall(".//seg")} for hyp in hyps
+  ]
   for i,(src_segment, src_type) in src_segments.items():
     segment = {}
     segment['dataset_id'] = setid
@@ -35,7 +39,7 @@ def processDoc(doc, setid, collectionid, jsonlist):
     if src_type != None:
       segment['type'] = src_type
     segment['segment_id'] = i
-    segment['refs'] = []
+    if len(refs): segment['refs'] = []
     for ref,ref_segments in zip(refs,all_ref_segments):
       if i in ref_segments:
         if ref.get('translator') != None:
@@ -51,7 +55,17 @@ def processDoc(doc, setid, collectionid, jsonlist):
            "text" : ref_segments[i][0]}
         )
         if ref_segments[i][1] != None:
-          segment[refs][-1]['type'] = ref_segments[i][1] 
+          segment[refs][-1]['type'] = ref_segments[i][1]
+    if len(hyps): segment['hyps'] = []
+    for hyp,hyp_segments in zip(hyps,all_hyp_segments):
+      if i in hyp_segments:
+        segment['hyps'].append(
+          {"system" : hyp.get('system'),
+           "lang" : hyp.get('lang'),
+           "text" : hyp_segments[i][0]}
+        )
+        if hyp_segments[i][1] != None:
+          segment[hyps][-1]['type'] = hyp_segments[i][1] 
     jsonlist.append(segment)
 
 def main():
@@ -71,7 +85,9 @@ def main():
       processDoc(col_or_doc, setid, None, jsonlist)
 
 
-  print(json.dumps(jsonlist, indent=2, ensure_ascii=False), file=args.output)
+  for jsonitem in jsonlist:
+    args.output.write(json.dumps(jsonitem, ensure_ascii=False) + "\n")
+  #print(json.dumps(jsonlist, indent=2, ensure_ascii=False), file=args.output)
 
 if __name__ == "__main__":
   main()
