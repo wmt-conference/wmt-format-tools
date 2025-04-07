@@ -12,26 +12,30 @@ import lxml.etree as ET
 
 def processDoc(doc, setid, collectionid, jsonlist):
   src = doc.find("src")
+  src_segments = {segment.get("id") : (segment.text, segment.get("type")) for segment in src.findall(".//seg")}
   refs = doc.findall("ref")
-  src_segments = {segment.get("id") : segment.text for segment in src.findall(".//seg")}
   all_ref_segments = [
-    {segment.get("id") : segment.text for segment in ref.findall(".//seg")} for ref in refs
+    {segment.get("id") : (segment.text, segment.get("type")) for segment in ref.findall(".//seg")} for ref in refs
   ]
-  for i,src_segment in src_segments.items():
+  for i,(src_segment, src_type) in src_segments.items():
     segment = {}
-    segment['setid'] = setid
-    segment['src'] = src_segment
-    segment['docid'] = doc.get('id')
-    segment['origlang'] = doc.get('origlang')
-    segment['srclang'] = src.get('lang')
+    segment['dataset_id'] = setid
+    segment['src_text'] = src_segment
+    segment['doc_id'] = doc.get('id')
+    segment['orig_lang'] = doc.get('origlang')
+    segment['src_lang'] = src.get('lang')
     if collectionid != None:
-      segment['collectionid'] = collectionid
+      segment['collection_id'] = collectionid
     if src.get('translator') != None:
-      segment['srctranslator'] = src.get('translator')
+      segment['translator'] = src.get('translator')
     if doc.get('testsuite'):
       segment['testsuite'] = doc.get('testsuite')
-    if segment.get('type'):
-      segment['type'] = segment.get('type')
+    if doc.get('domain'):
+      segment['domain'] = doc.get('domain')
+    if src_type != None:
+      segment['type'] = src_type
+    segment['segment_id'] = i
+    segment['refs'] = []
     for ref,ref_segments in zip(refs,all_ref_segments):
       if i in ref_segments:
         if ref.get('translator') != None:
@@ -39,10 +43,15 @@ def processDoc(doc, setid, collectionid, jsonlist):
           if translator.startswith("ref") and len(translator) > 3: translator = translator[3:]
         else:
           if len(ref) > 1:
-            raise RuntimeError(f"Document {segment['docid']} has multiple translators, but no translator ID")
-          translator = "0"
-        segment[f"ref{translator}"] = ref_segments[i]
-        segment[f"ref{translator}lang"] = ref.get('lang')
+            raise RuntimeError(f"Document {segment['doc_id']} has multiple translators, but no translator ID")
+          translator = "default"
+        segment['refs'].append(
+          {"translator" : translator,
+           "lang" : ref.get('lang'),
+           "text" : ref_segments[i][0]}
+        )
+        if ref_segments[i][1] != None:
+          segment[refs][-1]['type'] = ref_segments[i][1] 
     jsonlist.append(segment)
 
 def main():
@@ -62,7 +71,7 @@ def main():
       processDoc(col_or_doc, setid, None, jsonlist)
 
 
-  print(json.dumps(jsonlist, indent=2), file=args.output)
+  print(json.dumps(jsonlist, indent=2, ensure_ascii=False), file=args.output)
 
 if __name__ == "__main__":
   main()
