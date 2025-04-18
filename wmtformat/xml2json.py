@@ -32,9 +32,9 @@ def processDoc(doc, setid, collectionid, jsonlist):
       segment['collection_id'] = collectionid
     if src.get('translator') != None:
       segment['translator'] = src.get('translator')
-    if doc.get('testsuite'):
+    if doc.get('testsuite') != None:
       segment['testsuite'] = doc.get('testsuite')
-    if doc.get('domain'):
+    if doc.get('domain') != None:
       segment['domain'] = doc.get('domain')
     if src_type != None:
       segment['type'] = src_type
