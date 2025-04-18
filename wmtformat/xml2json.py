@@ -51,7 +51,7 @@ def processDoc(doc, setid, collectionid, jsonlist):
           translator = "default"
         segment['refs'].append(
           {"translator" : translator,
-           "lang" : ref.get('lang'),
+           "tgt_lang" : ref.get('lang'),
            "text" : ref_segments[i][0]}
         )
         if ref_segments[i][1] != None:
@@ -61,7 +61,7 @@ def processDoc(doc, setid, collectionid, jsonlist):
       if i in hyp_segments:
         segment['hyps'].append(
           {"system" : hyp.get('system'),
-           "lang" : hyp.get('lang'),
+           "tgt_lang" : hyp.get('lang'),
            "text" : hyp_segments[i][0]}
         )
         if hyp_segments[i][1] != None:
